@@ -7,9 +7,11 @@
         "build": "electron-vite build"
     },
     "dependencies": {
-        "electron-updater": "^6.1.7"
+        "electron-updater": "^6.1.7",
+        "preact": "^10.28.3"
     },
     "devDependencies": {
+        "@preact/preset-vite": "^2.10.3",
         "@types/node": "^25.2.2",
         "electron": "^28.0.0",
         "electron-vite": "^2.0.0",
