@@ -134,3 +134,23 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# --- Node.js ---
+node_modules/
+dist/
+.env
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- .NET ---
+bin/
+obj/
+.vs/
+*.user
+
+# --- AI ---
+/.agent
+GEMINI.md

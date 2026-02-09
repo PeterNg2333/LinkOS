@@ -1,0 +1,35 @@
+{
+    "name": "linkos-desktop",
+    "version": "0.1.0",
+    "main": "out/main/index.js",
+    "scripts": {
+        "dev": "electron-vite dev",
+        "build": "tsc && electron-vite build && electron-builder"
+    },
+    "dependencies": {
+        "@tailwindcss/vite": "^4.1.18",
+        "clsx": "^2.1.1",
+        "electron-updater": "^6.1.7",
+        "immer": "^11.1.4",
+        "lucide-preact": "^0.564.0",
+        "preact": "^10.28.3",
+        "tailwind-merge": "^3.4.0",
+        "tailwindcss": "^4.1.18",
+        "zod": "^4.3.6",
+        "zustand": "^5.0.11"
+    },
+    "devDependencies": {
+        "@preact/preset-vite": "^2.10.3",
+        "@types/node": "^25.2.2",
+        "electron": "^28.0.0",
+        "electron-vite": "^2.0.0",
+        "typescript": "^5.9.3",
+        "vite": "^5.0.0"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "electron",
+            "esbuild"
+        ]
+    }
+}

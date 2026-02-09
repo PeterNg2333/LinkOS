@@ -1,0 +1,19 @@
+{
+    "name": "linkos-root",
+    "private": true,
+    "scripts": {
+        "//1": "--- Install Commands ---",
+        "install:desktop": "pnpm --dir apps/desktop install",
+        "install:python": "uv sync runtimes/python",
+        "install:all": "npm run install:desktop && npm run install:python",
+        "//2": "--- Add Commands ---",
+        "add:desktop": "pnpm --dir apps/desktop add",
+        "//3": "--- Start Commands ---",
+        "dev": "concurrently \"npm run dev:desktop\" \"npm run dev:python\"",
+        "dev:desktop": "pnpm --dir apps/desktop dev",
+        "dev:python": "uv run runtimes/python/src/main.py",
+        "dev:dotnet": "dotnet run --project apps/desktop-dotnet",
+        "//4": "--- Build Commands ---",
+        "build": "pnpm --dir apps/desktop build"
+    }
+}
