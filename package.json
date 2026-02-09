@@ -1,0 +1,8 @@
+{
+    "name": "linkos-root",
+    "private": true,
+    "scripts": {
+        "dev": "cd apps/desktop && npm run dev",
+        "build": "cd apps/desktop && npm run build"
+    }
+}
