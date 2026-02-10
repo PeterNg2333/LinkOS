@@ -17,7 +17,6 @@ function createWindow() {
         mainWindow.show();
     });
 
-    // Load the remote URL for development or the local html file for production.
     if (process.env.ELECTRON_RENDERER_URL) {
         mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
     } else {
@@ -28,7 +27,7 @@ function createWindow() {
 app.whenReady().then(() => {
     createWindow();
 
-    app.on('activate', function () {
+    app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
