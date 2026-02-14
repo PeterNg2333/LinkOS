@@ -2,20 +2,37 @@
     "compilerOptions": {
         "target": "ESNext",
         "module": "ESNext",
-        "moduleResolution": "Node",
-        "lib": ["DOM", "DOM.Iterable", "ESNext"],
+        "moduleResolution": "Bundler",
+        "lib": [
+            "DOM",
+            "DOM.Iterable",
+            "ESNext"
+        ],
         "strict": true,
         "jsx": "react-jsx",
         "jsxImportSource": "preact",
         "esModuleInterop": true,
         "skipLibCheck": true,
         "noEmit": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
         "baseUrl": ".",
         "paths": {
-            "@renderer/*": ["src/renderer/*"],
-            "@preload/*": ["src/preload/*"],
-            "@main/*": ["src/main/*"]
+            "@/*": [
+                "src/*"
+            ],
+            "@renderer/*": [
+                "src/renderer/*"
+            ],
+            "@main/*": [
+                "src/main/*"
+            ],
+            "@preload/*": [
+                "src/preload/*"
+            ]
         }
     },
-    "include": ["src/**/*"]
+    "include": [
+        "src/**/*"
+    ]
 }
