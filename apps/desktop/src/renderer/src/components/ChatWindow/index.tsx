@@ -33,6 +33,10 @@ const ChatWindow: FunctionComponent<ChatWindowProps> = ({ className, width, heig
     const handleSend = (query: string) => {
         addMessage({ role: RoleTypes.USER, type: MessageTypes.TEXT, text: query });
         setIsTyping(true);
+        setTimeout(() => {
+            addMessage({ role: RoleTypes.ASSISTANT, type: MessageTypes.TEXT, text: "Hello!" });
+            setIsTyping(false);
+        }, 1000)
     }
 
     return (
