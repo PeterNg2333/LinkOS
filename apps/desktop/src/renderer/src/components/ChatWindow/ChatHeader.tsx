@@ -22,8 +22,11 @@ const ChatHeader: FunctionComponent<ChatHeaderProps> = ({ onClose }) => {
             "bg-[#2F5462] px-2 py-2 text-white"
         ])}>
             <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20"><Bot size={22} /></div>
-                <div><h3 className="text-sm font-semibold">AI Assistant</h3></div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20"><Bot size={22} /></div>
+                <div>
+                    <h3 className="text-sm font-semibold">AI Assistant</h3>
+                    <p className="text-[10px] text-teal-200">Tokens: 0</p>
+                </div>
             </div>
             {closeButton}
         </header>

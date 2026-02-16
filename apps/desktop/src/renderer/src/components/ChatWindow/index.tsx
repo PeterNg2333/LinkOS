@@ -21,6 +21,7 @@ const ChatWindow: FunctionComponent<ChatWindowProps> = ({ className, width, heig
         messages,
         isTyping,
         addMessage,
+        updateStreamMessage,
         clearMessages,
         setIsTyping
     } = useChatWindowStore();
@@ -30,9 +31,77 @@ const ChatWindow: FunctionComponent<ChatWindowProps> = ({ className, width, heig
         setIsTyping(false);
     }
 
-    const handleSend = (query: string) => {
+    const handleSend = async (query: string) => {
         addMessage({ role: RoleTypes.USER, type: MessageTypes.TEXT, text: query });
         setIsTyping(true);
+
+        try {
+            // // Get fresh messages from store state to ensure the new message is included
+            // const currentMessages = useChatWindowStore.getState().messages;
+            // const res = await window.api.llm.chat(currentMessages.map((message) => {
+            //     return {
+            //         role: message.role === RoleTypes.USER ? "user" : "assistant",
+            //         content: message.text
+            //     }
+            // }), "you are Link, a helpful assistant for Peter Ng.");
+
+            // if (res.success) {
+            //     addMessage({ role: RoleTypes.ASSISTANT, type: MessageTypes.TEXT, text: res.content });
+            // } else {
+            //     addMessage({ role: RoleTypes.ASSISTANT, type: MessageTypes.TEXT, text: String(res.error) });
+            // }
+
+            const currentMessages = useChatWindowStore.getState().messages;
+            const traceId = crypto.randomUUID();
+            addMessage({ role: RoleTypes.ASSISTANT, type: MessageTypes.TEXT, text: "" }, traceId);
+            const cleanup = window.api.llm.chatStream(
+                (chunk) => {
+                    if (chunk.success) {
+                        const isTyping = useChatWindowStore.getState().isTyping;
+                        if (isTyping) {
+                            setIsTyping(false);
+                        }
+                        updateStreamMessage(traceId, { text: chunk.content });
+                    } else {
+                        updateStreamMessage(traceId, { text: String(chunk.error) });
+                        cleanup()
+                    }
+                },
+                (error) => {
+                    console.error("Error in LLM chat:", error)
+                    addMessage({ role: RoleTypes.ASSISTANT, type: MessageTypes.TEXT, text: "Error" })
+                    const isTyping = useChatWindowStore.getState().isTyping;
+                    if (isTyping) {
+                        setIsTyping(false);
+                    }
+                    cleanup()
+                },
+                () => {
+                    const isTyping = useChatWindowStore.getState().isTyping;
+                    if (isTyping) {
+                        setIsTyping(false);
+                    }
+                    cleanup()
+                },
+                traceId,
+                currentMessages?.map((message) => {
+                    return {
+                        role: message.role === RoleTypes.USER ? "user" : "assistant",
+                        content: message.text
+                    }
+                }),
+                "you are Link, a helpful assistant for Peter Ng.",
+                true,
+                true
+            );
+        } catch (err) {
+            console.error("Error in LLM chat:", err)
+            addMessage({ role: RoleTypes.ASSISTANT, type: MessageTypes.TEXT, text: "Error" })
+            const isTyping = useChatWindowStore.getState().isTyping;
+            if (isTyping) {
+                setIsTyping(false);
+            }
+        }
     }
 
     return (

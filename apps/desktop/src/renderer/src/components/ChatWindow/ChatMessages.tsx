@@ -40,10 +40,14 @@ const ChatMessages: FunctionComponent<ChatMessagesProps> = ({ messages = [], isT
     }, [])
 
     return (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-6 scroll-smooth">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-slate-50 p-3 space-y-3 scroll-smooth">
             {messages.length === 0
                 ? EmptyMessage
-                : (messages.map((message) => (<ChatMessage key={message.id} message={message} />)))
+                : (messages?.map((message) => (
+                    message.text !== ""
+                        ? <ChatMessage key={message.id} message={message} />
+                        : null
+                )))
             }
             {BotTypingReply}
         </div>

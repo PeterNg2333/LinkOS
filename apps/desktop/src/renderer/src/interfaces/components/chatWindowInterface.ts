@@ -27,7 +27,8 @@ type IMessage<T = void> = {
 interface ChatStore {
     messages: IMessage[];
     isTyping: boolean;
-    addMessage: (message: Omit<IMessage, 'id' | 'timestamp'>) => void;
+    addMessage: (message: Omit<IMessage, 'id' | 'timestamp'>, traceId?: string) => void;
+    updateStreamMessage: (id: string, updatedMessage: Partial<Omit<IMessage, 'id' | 'timestamp'>>) => void;
     clearMessages: () => void;
     setIsTyping: (isTyping: boolean) => void;
 }
