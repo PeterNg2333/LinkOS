@@ -9,7 +9,7 @@ const App: FunctionalComponent = () => {
     return (
         <div className={cn(["flex flex-col items-center justify-center h-screen"])}>
             <div className={cn(["fixed bottom-2.5 right-2"])}>
-                <ChatWindow width={300} height={400} />
+                <ChatWindow width={250} height={400} />
             </div>
         </div>
     )

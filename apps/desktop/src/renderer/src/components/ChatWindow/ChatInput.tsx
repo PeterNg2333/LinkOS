@@ -1,6 +1,6 @@
 import { FunctionComponent, TargetedEvent } from 'preact';
 import { useState } from 'preact/hooks'
-import { Send, Loader2 } from 'lucide-preact';
+import { Send, Loader2, BookOpen } from 'lucide-preact';
 import cn from '@/lib/utils/cn';
 
 interface ChatInputProps {
@@ -20,8 +20,25 @@ const ChatInput: FunctionComponent<ChatInputProps> = ({ onSend = (query: string)
             setInput('');
         }
     }
+    const handleUploadDoc = async (evt: TargetedEvent<HTMLButtonElement, Event>) => {
+        evt.preventDefault();
+        const res = await window.api.rag.ingest();
+        console.log(res);
+        if (res.success) {
+            console.log("Ingested:", res.content);
+            setInput('');
+        }
+    }
     return (
         <div className={cn("border-t border-slate-100 bg-white p-2 pt-2.5")}>
+            <div className="flex items-center mb-2">
+                <button onClick={handleUploadDoc} disabled={disabled} className={cn(
+                    "flex items-center gap-1",
+                    "text-xs text-slate-500 hover:text-[#76CCC6] transition-colors"
+                )}>
+                    <BookOpen size={16} />
+                </button>
+            </div>
             <form onSubmit={handleSubmit} className="relative flex items-center">
                 <input
                     type="text"

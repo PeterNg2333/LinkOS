@@ -44,9 +44,7 @@ const ChatMessage: FunctionComponent<ChatMessageProps> = ({ message }) => {
             case MessageTypes.TEXT:
                 return <p className="whitespace-pre-wrap leading-relaxed text-xs">{message.text}</p>
             case MessageTypes.TYPING:
-                return <div className={cn([
-                    "bg-white", "border border-slate-100 rounded-full", "text-slate-400"
-                ])}><MoreHorizontal className="animate-bounce" size={18} /></div>
+                return <div className="bg-white text-slate-400"><MoreHorizontal className="animate-bounce" size={18} /></div>
             default:
                 return null
         }
@@ -59,7 +57,7 @@ const ChatMessage: FunctionComponent<ChatMessageProps> = ({ message }) => {
             isVisible ? "opacity-100 translate-x-0" : `opacity-0 ${styles.transform}`
         ])}>
             <div className={`flex max-w-[85%] flex-col ${styles.bubbleWrapper}`}>
-                <div className={cn("rounded-lg px-3 py-1 text-xs", styles.bubble)}>{MessageContent}</div>
+                <div className={cn("rounded-lg px-3 py-1 text-sm", styles.bubble)}>{MessageContent}</div>
             </div>
         </div>
     )

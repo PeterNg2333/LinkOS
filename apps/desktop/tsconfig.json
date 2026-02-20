@@ -3,7 +3,11 @@
         "target": "ESNext",
         "module": "ESNext",
         "moduleResolution": "Node",
-        "lib": ["DOM", "DOM.Iterable", "ESNext"],
+        "lib": [
+            "DOM",
+            "DOM.Iterable",
+            "ESNext"
+        ],
         "strict": true,
         "jsx": "react-jsx",
         "jsxImportSource": "preact",
@@ -15,7 +19,8 @@
             "@/*": ["src/renderer/src/*"],
             "@renderer/*": ["src/renderer/*"],
             "@preload/*": ["src/preload/*"],
-            "@main/*": ["src/main/*"]
+            "@main/*": ["src/main/*"],
+            "@common/*": ["src/common/*"]
         }
     },
     "include": [
