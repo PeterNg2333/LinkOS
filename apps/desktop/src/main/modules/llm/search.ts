@@ -1,5 +1,5 @@
 import { tavily, type TavilySearchResponse, type TavilySearchOptions } from "@tavily/core";
-import config from "@main/config";
+import config from "@main/infrastructure/config";
 import log from "electron-log/main";
 
 const logger = log.scope("llm:search");

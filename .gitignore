@@ -138,6 +138,10 @@ dist
 # --- Node.js ---
 node_modules/
 dist/
+out/
+storage/
+*.arrow
+*.json
 .env
 
 # --- Python ---

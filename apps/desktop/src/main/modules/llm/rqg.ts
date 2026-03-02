@@ -8,7 +8,7 @@ import { app, ipcMain, dialog } from 'electron';
 import fs from 'fs/promises'
 
 import { createLanceDBAdapter, LanceDBAdapter } from './lancedb-adapter'
-import config from '@main/config'
+import config from '@main/infrastructure/config'
 import log from 'electron-log/main';
 
 const logger = log.scope('llm:rag');

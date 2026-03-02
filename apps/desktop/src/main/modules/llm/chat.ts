@@ -3,9 +3,9 @@ import { ChatOpenAI } from "@langchain/openai"
 import { type BaseMessageLike } from "@langchain/core/messages"
 
 
-import config from "@main/config"
-import { retrieveContext } from "@main/llm/rqg"
-import { search } from "@main/llm/search"
+import config from "@main/infrastructure/config"
+import { retrieveContext } from "@main/modules/llm/rqg"
+import { search } from "@main/modules/llm/search"
 import log from 'electron-log/main';
 
 const logger = log.scope('llm:chat');

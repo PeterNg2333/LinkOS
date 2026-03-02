@@ -2,8 +2,8 @@ import log from './logger';
 import { app, BrowserWindow } from 'electron';
 import { join } from 'path';
 
-import { setupLLMHandlers } from "@main/llm/chat"
-import setupRAGHandlers from "@main/llm/rqg"
+import { setupLLMHandlers } from "@main/modules/llm/chat"
+import setupRAGHandlers from "@main/modules/llm/rqg"
 
 const logger = log.scope('main');
 logger.info('Main process started...');
