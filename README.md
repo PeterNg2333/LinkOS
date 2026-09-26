@@ -10,7 +10,7 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 - **Desktop:** Electron runs one long-lived Engine; Next.js static export provides the UI.
 - **Local inputs:** Electron captures screen images, system status, and microphone audio. OCR runs locally. The microphone can be turned off.
 - **Gateway:** A local TypeScript API handles model calls, configured API clients, memory search, and scoped Git sync. It does not own agent scheduling or device capture.
-- **Models:** Jev classifies compact text or structured state. Gemini handles image and audio understanding, memory work, research, and code suggestions.
+- **Models:** Jev classifies compact text or structured state. Gemini is the initial generative model family for image and audio understanding, memory work, research, and code suggestions. The gateway uses a small model adapter so another provider, such as OpenAI, can be selected later.
 - **Storage:** Each device keeps its own Git working tree; all Markdown memory, notes, tasks, and `SOUL.md` sync through a Git remote on a remote filesystem. The gateway searches a small device-local set of Markdown pages; no central application database is required. Raw captures and runtime state remain separate on each device.
 
 ## Event flow

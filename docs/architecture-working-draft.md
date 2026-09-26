@@ -5,7 +5,7 @@
 ## Current direction
 
 - Electron Engine owns events, status, jobs, agent runs, local capture, OCR, and Markdown memory writes.
-- A local TypeScript gateway handles Jev/Gemini, configured API clients, memory search, and scoped Git sync.
+- A local TypeScript gateway handles Jev, Gemini through a model adapter, configured API clients, memory search, and scoped Git sync.
 - Next.js is the desktop UI. A future VS Code extension feeds the same Engine.
 - Each device keeps a separate Markdown Git working tree. All memory, notes, tasks, and `SOUL.md` sync through the remote; raw captures and any runtime search list stay device-local.
 
@@ -23,7 +23,7 @@
 
 - Root: `pnpm` workspace and TypeScript. Keep aliases inside each app; use workspace imports between apps.
 - `apps/gateway`: `fastify` hosts the loopback API. `@orpc/server` exposes one typed RPC router; Zod schemas come from `apps/contracts`. `@typesafe-ai/sdk` calls Jev and `@google/genai` calls Gemini. `simple-git` runs the scoped, serialized vault sync using the installed Git binary. `@orama/orama` indexes a rebuildable, device-local Markdown page/chunk list and serves full-text search; trial `@orama/tokenizers` for Chinese notes.
-- `apps/gateway` later: `@orpc/openapi` and `@orpc/zod` generate OpenAPI from the same router if another client needs REST docs. `@openrouter/sdk` adds an optional provider after a live account/region check. `tsyringe` and `reflect-metadata` only if manual constructor injection becomes unwieldy. `neverthrow` only if explicit Result values simplify several real error flows; confirm this is the intended package name.
+- `apps/gateway` later: `@orpc/openapi` and `@orpc/zod` generate OpenAPI from the same router if another client needs REST docs. Add an OpenAI client only when OpenAI access is available; OpenRouter remains an unverified option. `tsyringe` and `reflect-metadata` only if manual constructor injection becomes unwieldy. `neverthrow` only if explicit Result values simplify several real error flows; confirm this is the intended package name.
 - `apps/desktop`: `electron` runs the Engine, capture, vault writes, and preload IPC. `next`, `react`, and `react-dom` build the static UI; `zustand` holds visible UI state, not Engine state. `tailwindcss` plus selected `shadcn/ui` components is the proposed UI pair; choose MUI instead if its ready-made component set is preferred, without maintaining two component systems. `tesseract.js` is a local OCR trial with bundled language data. `@orpc/client` calls the gateway from Electron main, not directly from the renderer. Zod validates device settings and any boundary payloads.
 - `apps/contracts`: `zod` only. Export cross-process schemas and inferred types; no clients, routes, state, or business logic. The desktop may import the gateway router type with `import type` for oRPC inference; this adds no gateway runtime to the desktop.
 - Platform APIs: Electron `desktopCapturer` and `nativeImage`, renderer `MediaRecorder`, Node timers and file APIs. Add an MCP client only for an approved MCP integration.
@@ -33,7 +33,7 @@
 ## Gateway operations
 
 - `decide(state, questions)` returns Jev answers and token usage.
-- `generate(context, media, tools)` returns Gemini text or tool requests and usage.
+- `generate(context, media, tools)` calls the selected model adapter and returns text or tool requests and usage. Gemini is the only initial implementation; Jev remains a separate decision client.
 - `searchMemory(query, scope)` returns page paths, sections, and matched chunks.
 - `syncVault()` returns sync status or conflicts.
 
@@ -45,6 +45,7 @@
 ## Decision criteria
 
 - Prioritize development speed and easy debugging; start with Fastify for the local TypeScript API.
+- Keep one internal `ModelAdapter` shape for the generation request, response, tool requests, and usage. The gateway maps it to Gemini now; choose a Gemini model ID per job without creating an adapter per model. Add an OpenAI implementation and provider selection only when access is available; keep the Engine's tool loop provider-independent.
 - The Engine owns vault writes; the gateway owns the Git sync queue. Git is a fixed internal operation, not an arbitrary agent command tool.
 - Coalesce repeated events and cap each agent run by time, model calls, and tool calls.
 - The Engine owns approved local and MCP tools. Markdown skills provide instructions, not permissions. The gateway owns remote API connectors.
@@ -69,7 +70,8 @@ apps/gateway/
   src/
     server.ts          # Fastify loopback listener and RPC adapter
     rpc.ts             # Typed gateway operations and router type
-    models.ts          # Jev and Gemini calls; optional future provider
+    models.ts          # Shared generation shape and Gemini adapter
+    jev.ts             # Quick classification client
     memory-search.ts   # Local Orama index, page/chunk lookup
     git-sync.ts        # Scoped Git sync queue and conflicts
 apps/contracts/
