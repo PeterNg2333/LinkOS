@@ -35,7 +35,7 @@
 ## Candidate folders
 
 ```text
-apps/desktop/        # Electron Engine, capture, OCR, Next.js UI
-services/gateway/    # Local Fastify API, model and remote clients, Git sync
-packages/contracts/  # Add only for schemas used on both sides
+apps/desktop/    # Electron Engine, capture, OCR, Next.js UI
+apps/gateway/    # Local Fastify API, model and remote clients, Git sync
+apps/contracts/  # Add only for schemas used on both sides
 ```

@@ -37,7 +37,8 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 ```text
 linkos/
   apps/desktop/             # Electron Engine, capture, OCR, Next.js UI
-  services/gateway/         # Local TypeScript API, model clients, Git sync
+  apps/gateway/             # Local TypeScript API, model clients, Git sync
+  apps/contracts/           # Shared schemas, only when both apps need them
   archive/legacy-vue-vite/  # Historical prototype
   AGENTS.md                 # Coding rules and architecture boundaries
   README.md

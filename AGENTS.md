@@ -18,6 +18,7 @@
 - The future VS Code extension is a thin adapter to the same Engine. It may provide diffs, diagnostics, cursor context, and codebase references; do not build another agent inside it. Do not implement the extension until requested.
 - The runtime assistant may read only user-approved folders and write only its own vault. It may call approved memory, task, research, and API-read tools, but may not execute arbitrary local commands or edit project code. Future code execution needs an explicit MCP or sandbox boundary.
 - Keep event, tool, and gateway contracts explicit. Share schemas only across process boundaries that need them.
+- Keep active workspaces under `apps/`: `desktop`, `gateway`, and `contracts` only when schemas are shared. Do not create `services/` or `packages/` layers for this design.
 
 ## Coding rules
 
