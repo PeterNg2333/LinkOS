@@ -6,12 +6,12 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 
 ## Architecture
 
-- **Monorepo:** `pnpm` for the desktop app and shared TypeScript code. The AI gateway's runtime is still under discussion.
+- **Monorepo:** `pnpm` for the desktop app, local TypeScript gateway, and shared contracts where needed.
 - **Desktop:** Electron runs one long-lived Engine; Next.js static export provides the UI.
 - **Local inputs:** Electron captures screen images, system status, and microphone audio. OCR runs locally. The microphone can be turned off.
-- **Gateway:** An API handles model calls, configured API clients, and scoped Git updates. Its runtime and Git boundary are under discussion.
+- **Gateway:** A local TypeScript API handles model calls, configured API clients, and scoped Git sync. It does not own agent scheduling or device capture.
 - **Models:** Jev classifies compact text or structured state. Gemini handles image and audio understanding, memory work, research, and code suggestions.
-- **Storage:** Markdown is canonical and Git syncs it. IndexedDB holds a rebuildable active-memory search index and runtime state. Raw media stays local unless an event calls for model analysis.
+- **Storage:** Each device keeps a local Markdown vault in a Git working tree and syncs through a Git remote on a remote filesystem. IndexedDB holds a rebuildable active-memory search index and local runtime state; no central application database is required. Raw media stays local unless an event calls for model analysis.
 
 ## Event flow
 
@@ -21,6 +21,7 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 4. The Engine updates current status: activity, repo, task, and running jobs. Meaningful events can start bounded agent runs; scheduled jobs handle checks and memory compression.
 5. Jev routes compact context. When needed, Gemini receives relevant context and can request approved memory, task, research, or API tools through the Engine.
 6. The Engine presents suggestions and records useful outcomes in Markdown. It meters model and tool costs against a target of about HK$80 per month.
+7. A scoped sync job commits vault changes, integrates remote changes, and pushes them. Incoming Markdown changes refresh the local search index; conflicts pause sync for review.
 
 ## Memory and permissions
 
@@ -36,7 +37,7 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 ```text
 linkos/
   apps/desktop/             # Electron Engine, capture, OCR, Next.js UI
-  services/ai-api/          # Stateless model gateway; runtime undecided
+  services/gateway/         # Local TypeScript API, model clients, Git sync
   archive/legacy-vue-vite/  # Historical prototype
   AGENTS.md                 # Coding rules and architecture boundaries
   README.md

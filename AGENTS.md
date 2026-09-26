@@ -10,13 +10,14 @@
 
 - Keep one stateful LinkOS Engine in the Electron desktop app. It owns event triggers, current status, background jobs, agent runs, approved local tools, and the Markdown vault.
 - Keep screen capture, system status, microphone capture, and OCR local to Electron. Next.js provides the desktop UI; it does not own a second Engine.
-- The gateway handles model calls, configured API clients, and scoped Git updates. Its runtime and Git boundary are undecided. It does not capture devices, own agent state, or schedule agent work.
+- Use a local TypeScript gateway for model calls, configured API clients, and scoped Git sync. It does not capture devices, own agent state, or schedule agent work.
 - Send compact text or structured state to Jev for quick decisions. Use Gemini for image and audio understanding, memory work, research, and code suggestions.
 - Keep Markdown as canonical memory and tasks. Attach `SOUL.md`, short memory, today's note, and long memory to agent prompts; use summaries and indexes for weekly and monthly memory by default. Keep at most one month of detailed memory active and archive older detail.
-- Use IndexedDB only for rebuildable active-memory search and runtime state. Keep stable prompt content before changing context for possible provider caching; meter actual model, cache, and tool usage against the monthly cost target.
+- Keep a local Markdown Git working tree on each device and sync through a Git remote on a remote filesystem. Use no central application database. Use IndexedDB only for rebuildable active-memory search and local runtime state. Keep stable prompt content before changing context for possible provider caching; meter actual model, cache, and tool usage against the monthly cost target.
+- Keep vault writes in the Engine and serialize Git sync in the gateway. Stage only vault-owned paths, never user-approved read-only folders. Stop and report sync conflicts rather than force-pushing or silently overwriting Markdown.
 - The future VS Code extension is a thin adapter to the same Engine. It may provide diffs, diagnostics, cursor context, and codebase references; do not build another agent inside it. Do not implement the extension until requested.
 - The runtime assistant may read only user-approved folders and write only its own vault. It may call approved memory, task, research, and API-read tools, but may not execute arbitrary local commands or edit project code. Future code execution needs an explicit MCP or sandbox boundary.
-- Keep the event, tool, and gateway contracts explicit without committing to a backend language before that choice is made.
+- Keep event, tool, and gateway contracts explicit. Share schemas only across process boundaries that need them.
 
 ## Coding rules
 
