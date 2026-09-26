@@ -9,6 +9,14 @@
 - Electron separates main, preload, and renderer code. Next.js organizes renderer UI by feature. A future VS Code extension feeds the same Engine.
 - Each device keeps a separate Markdown Git working tree. All memory, notes, tasks, and `SOUL.md` sync through the remote; raw captures and any runtime search list stay device-local.
 
+## Next build session
+
+- Scaffold the `pnpm` workspace, desktop app, and local gateway. Add `apps/contracts` when the first schema is shared.
+- Make one manual request travel from Next.js through preload, the Engine, and the gateway to Gemini; show the result and usage in the UI.
+- Check the loopback credential, gateway-only API keys, and Electron IPC boundary on that path.
+- Then add capture, event rules, memory search, and Git sync as separate working slices.
+- Settle the remaining behavior choices in [system design](<../system design.md>) as their slices begin.
+
 ## Candidate flow
 
 1. Electron starts the local gateway and keeps API keys out of the Next.js UI.
