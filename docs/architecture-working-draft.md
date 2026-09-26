@@ -19,15 +19,16 @@
 6. The gateway batches vault changes, then serializes Git sync: stage vault-owned paths, commit, fetch and integrate remote commits, then push. Conflicts pause sync.
 7. Incoming Markdown changes refresh the local search list.
 
-## Candidate libraries
+## Candidate packages by folder
 
-- `pnpm` workspace; Next.js static export for UI; Electron IPC and preload for UI-to-Engine calls.
-- Fastify on loopback for the local gateway; TypeBox schemas shared in `apps/contracts` only for cross-process requests and replies.
-- `@typesafe-ai/sdk` for Jev and `@google/genai` for Gemini. Keep provider keys in the gateway.
-- Pass `JEV_API_KEY` and `GOOGLE_AI_STUDIO_API_KEY` to those SDKs explicitly. Project and location settings matter only if Google access later moves to Vertex AI.
-- Electron `desktopCapturer` and `nativeImage` for screenshots and change checks; `MediaRecorder` in an Electron renderer for enabled microphone capture.
-- Trial `tesseract.js` in a local worker for OCR; bundle language data and measure Chinese/English accuracy and latency.
-- Node timers, file APIs, and fixed Git CLI arguments for jobs, Markdown, and sync. Add an MCP client only for an approved MCP integration.
+- Root: `pnpm` workspace and TypeScript. Keep aliases inside each app; use workspace imports between apps.
+- `apps/gateway`: `fastify` hosts the loopback API. `@orpc/server` exposes one typed RPC router; Zod schemas come from `apps/contracts`. `@typesafe-ai/sdk` calls Jev and `@google/genai` calls Gemini. `simple-git` runs the scoped, serialized vault sync using the installed Git binary. `@orama/orama` indexes a rebuildable, device-local Markdown page/chunk list and serves full-text search; trial `@orama/tokenizers` for Chinese notes.
+- `apps/gateway` later: `@orpc/openapi` and `@orpc/zod` generate OpenAPI from the same router if another client needs REST docs. `@openrouter/sdk` adds an optional provider after a live account/region check. `tsyringe` and `reflect-metadata` only if manual constructor injection becomes unwieldy. `neverthrow` only if explicit Result values simplify several real error flows; confirm this is the intended package name.
+- `apps/desktop`: `electron` runs the Engine, capture, vault writes, and preload IPC. `next`, `react`, and `react-dom` build the static UI; `zustand` holds visible UI state, not Engine state. `tailwindcss` plus selected `shadcn/ui` components is the proposed UI pair; choose MUI instead if its ready-made component set is preferred, without maintaining two component systems. `tesseract.js` is a local OCR trial with bundled language data. `@orpc/client` calls the gateway from Electron main, not directly from the renderer. Zod validates device settings and any boundary payloads.
+- `apps/contracts`: `zod` only. Export cross-process schemas and inferred types; no clients, routes, state, or business logic. The desktop may import the gateway router type with `import type` for oRPC inference; this adds no gateway runtime to the desktop.
+- Platform APIs: Electron `desktopCapturer` and `nativeImage`, renderer `MediaRecorder`, Node timers and file APIs. Add an MCP client only for an approved MCP integration.
+- Jev and Gemini both have official TypeScript SDKs. Pass `JEV_API_KEY` and `GOOGLE_AI_STUDIO_API_KEY` explicitly. Google project/location settings matter only if access later moves to Vertex AI.
+- LlamaIndex.TS has been deprecated by its maintainers. Keep search in one process, the local gateway; do not install a second index in Electron. Add vector embeddings only if real retrieval examples justify hybrid search.
 
 ## Gateway operations
 
@@ -48,7 +49,7 @@
 - Coalesce repeated events and cap each agent run by time, model calls, and tool calls.
 - The Engine owns approved local and MCP tools. Markdown skills provide instructions, not permissions. The gateway owns remote API connectors.
 - Bind the gateway to loopback and require a per-session credential; the UI reaches the Engine through a narrow Electron preload API.
-- Search at most 30 daily notes plus recent weekly/monthly summaries; start with six months of summaries. At up to 2,000 characters per daily note, use direct file search or a small in-memory page/chunk list. Add a persisted index only if measurement shows a need.
+- Search at most 30 daily notes plus recent weekly/monthly summaries; start with six months of summaries. At up to 2,000 characters per daily note, build Orama's small in-memory index from Markdown on startup and refresh changed pages after vault writes or Git sync. Persist the index only if startup measurements justify it.
 - Use one shared branch for the vault initially. Never force-push or auto-resolve conflicting memory edits.
 - Share schemas only where processes exchange data; validate requests at that boundary.
 
@@ -56,10 +57,31 @@
 
 ```text
 apps/desktop/
-  app/           # Next.js UI
-  electron/      # Engine, capture, OCR, vault writes, preload
+  app/                 # Next.js UI and Zustand view state
+  electron/
+    main.ts            # Starts the Engine and gateway
+    engine.ts          # Event rules, status, jobs, bounded agent loop
+    capture.ts         # Screen, status, optional audio, OCR
+    vault.ts           # Markdown reads and allowed writes
+    gateway-client.ts  # oRPC client in Electron main
+    preload.ts         # Narrow UI-to-Engine IPC
 apps/gateway/
-  src/           # Fastify routes, Jev/Gemini clients, search, Git sync
+  src/
+    server.ts          # Fastify loopback listener and RPC adapter
+    rpc.ts             # Typed gateway operations and router type
+    models.ts          # Jev and Gemini calls; optional future provider
+    memory-search.ts   # Local Orama index, page/chunk lookup
+    git-sync.ts        # Scoped Git sync queue and conflicts
 apps/contracts/
-  src/           # Shared request and response schemas only
+  src/
+    gateway.ts         # Zod request/response schemas and inferred types only
 ```
+
+## Sources for provisional choices
+
+- Jev JavaScript SDK: https://docs.typesafe.ai/sdk/javascript
+- Google GenAI JavaScript SDK: https://ai.google.dev/gemini-api/docs/libraries
+- oRPC Fastify adapter and type-only client import: https://orpc.dev/docs/adapters/fastify and https://orpc.dev/docs/getting-started
+- LlamaIndex.TS deprecation: https://github.com/run-llama/LlamaIndexTS
+- Orama local search: https://docs.orama.com/docs/orama-js/search
+- Orama Chinese tokenization: https://docs.orama.com/docs/orama-js/text-analysis/stemming
