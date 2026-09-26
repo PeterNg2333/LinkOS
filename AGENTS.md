@@ -8,14 +8,15 @@
 
 ## Architecture boundaries
 
-- Keep one stateful LinkOS Engine in the Electron desktop app. It owns scheduling, context assembly, proactive decisions, the Markdown vault, and Git sync.
+- Keep one stateful LinkOS Engine in the Electron desktop app. It owns event triggers, current status, background jobs, agent runs, approved tools, the Markdown vault, and Git sync.
 - Keep screen capture, system status, microphone capture, and OCR local to Electron. Next.js provides the desktop UI; it does not own a second Engine.
-- Keep the ASP.NET Core API stateless. It receives self-contained requests, calls Jev or Gemini, and returns structured results. It does not capture devices, read local folders, own memory, or schedule agent work.
+- Keep the AI gateway stateless. It receives self-contained requests, calls Jev or Gemini, and returns results. Its server runtime is undecided. It does not capture devices, read local folders, own memory, execute local tools, or schedule agent work.
 - Send compact text or structured state to Jev for quick decisions. Use Gemini for image and audio understanding, memory work, research, and code suggestions.
-- Keep Markdown as canonical memory. Attach `SOUL.md`, short memory, today's note, and long memory to prompts; use summaries and indexes for weekly and monthly memory by default. MVP needs no database.
+- Keep Markdown as canonical memory and tasks. Attach `SOUL.md`, short memory, today's note, and long memory to agent prompts; use summaries and indexes for weekly and monthly memory by default. Keep at most one month of detailed memory active and archive older detail.
+- Use IndexedDB only for rebuildable active-memory search and runtime state. Keep stable prompt content before changing context for possible provider caching; meter actual model, cache, and tool usage against the monthly cost target.
 - The future VS Code extension is a thin adapter to the same Engine. It may provide diffs, diagnostics, cursor context, and codebase references; do not build another agent inside it. Do not implement the extension until requested.
-- The runtime assistant may read only user-approved folders and write only its own vault. It may suggest code changes but may not execute local commands or edit project code. Any future execution must go through an explicitly designed MCP or sandbox boundary.
-- Keep API contracts explicit. Generate the TypeScript client from the .NET OpenAPI contract when that boundary is implemented.
+- The runtime assistant may read only user-approved folders and write only its own vault. It may call approved memory, task, research, and API-read tools, but may not execute arbitrary local commands or edit project code. Future code execution needs an explicit MCP or sandbox boundary.
+- Keep the event, tool, and gateway contracts explicit without committing to a backend language before that choice is made.
 
 ## Coding rules
 

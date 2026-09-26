@@ -1,56 +1,54 @@
 # LinkOS
 
-A local-first personal AI assistant. It observes work context, saves useful Markdown memory, and offers help without waiting for every request.
+A local-first personal AI assistant. It observes work context, keeps Markdown memory, and offers help without waiting for every request.
 
 > Status: architecture design. The old Vue/Vite/Electron prototype is in [`archive/legacy-vue-vite/`](archive/legacy-vue-vite/). The new app is not implemented yet.
 
 ## Architecture
 
-- **Monorepo:** `pnpm` for the desktop app and shared TypeScript packages; the .NET service lives in the same repository.
+- **Monorepo:** `pnpm` for the desktop app and shared TypeScript code. The AI gateway's runtime is still under discussion.
 - **Desktop:** Electron runs one long-lived Engine; Next.js static export provides the UI.
 - **Local inputs:** Electron captures screen images, system status, and microphone audio. OCR runs locally. The microphone can be turned off.
-- **AI API:** Stateless ASP.NET Core Minimal API. It receives complete requests, calls models, and returns structured results.
-- **Models:** Jev makes quick decisions from compact text or structured state. Gemini handles images, speech, memory, research, and code suggestions.
-- **Storage:** Markdown is canonical memory and Git syncs it. Raw screenshots and audio are stored locally; relevant samples can be sent to Gemini. MVP needs no database.
+- **AI gateway:** A stateless API receives complete requests, calls Jev or Gemini, and returns results. It does not own local state or tools.
+- **Models:** Jev classifies compact text or structured state. Gemini handles image and audio understanding, memory work, research, and code suggestions.
+- **Storage:** Markdown is canonical and Git syncs it. IndexedDB holds a rebuildable active-memory search index and runtime state. Raw media stays local unless an event calls for model analysis.
 
-## Flow
+## Event flow
 
-1. Electron takes a screenshot every minute, reads system status, and captures audio when the microphone is enabled.
-2. Local OCR turns screen content into text. The Engine combines OCR, status, and recent events.
-3. The Engine sends compact text through the .NET API to Jev to infer the current task and decide on extra analysis or suggestions.
-4. The Engine sends scheduled screenshots and relevant image, audio, or text through the .NET API to Gemini.
-5. The Engine assembles prompt context, presents useful results, and writes memory to the local Markdown vault. Git syncs the Markdown.
+1. Electron takes a screenshot every minute and observes system status and enabled audio. Missed timer events are not replayed after resume.
+2. Local capture, OCR, screen changes, keyboard activity counts, timers, and later editor adapters emit events.
+3. A trigger list chooses the next stage by event, frequency or threshold, and cooldown. A rule can run directly or wait for OCR or Jev classification.
+4. The Engine updates current status: activity, repo, task, and running jobs. Meaningful events can start bounded agent runs; scheduled jobs handle checks and memory compression.
+5. Jev routes compact context. When needed, Gemini receives relevant context and can request approved memory, task, research, or API tools through the Engine.
+6. The Engine presents suggestions and records useful outcomes in Markdown. It meters model and tool costs against a target of about HK$80 per month.
 
 ## Memory and permissions
 
-- `SOUL.md`: lasting assistant instructions; included in prompts.
-- `short.md`, today's note, and `long.md`: included in every prompt.
-- Weekly and monthly notes: include summaries and indexes by default; load full notes when needed.
-- Both the user and AI can edit Markdown. Git keeps history.
-- The runtime agent reads only user-approved folders and writes only its own vault.
-- MVP may organize memory and suggest actions. It cannot run local commands or edit project code.
+- `SOUL.md`, `short.md`, today's note, and `long.md` are included in agent prompts. Keep stable prompt content before changing context so provider caching can apply.
+- Weekly and monthly summaries and page indexes guide discovery. The detailed active set covers at most one month.
+- Older detail moves to an accessible Markdown archive. The agent reads archive pages through constrained search when needed.
+- IndexedDB indexes active Markdown chunks for hybrid search; Jev can judge candidate relevance. Markdown remains the source of truth.
+- The task list and memory are human- and AI-editable Markdown in the Git-synced vault.
+- The runtime agent reads only user-approved folders and writes only its own vault. It can use approved tools for memory, tasks, research, and API reads; it cannot run arbitrary local commands or edit project code.
 
 ## Planned folders
 
 ```text
 linkos/
-├─ apps/desktop/         # Electron Engine, capture, OCR, Next.js UI
-├─ services/ai-api/      # Stateless .NET gateway for Jev and Gemini
-├─ packages/api-client/  # TypeScript client generated from .NET OpenAPI
-├─ archive/legacy-vue-vite/ # Historical prototype
-├─ AGENTS.md             # Coding rules and architecture boundaries
-└─ README.md
+  apps/desktop/             # Electron Engine, capture, OCR, Next.js UI
+  services/ai-api/          # Stateless model gateway; runtime undecided
+  archive/legacy-vue-vite/  # Historical prototype
+  AGENTS.md                 # Coding rules and architecture boundaries
+  README.md
 
-<user-vault>/             # User-selected path; Git syncs Markdown
-├─ SOUL.md
-└─ memory/
-   ├─ short.md
-   ├─ long.md
-   └─ monthly/
-      ├─ summary.md
-      └─ weekly/
-         ├─ summary.md
-         └─ daily/
+<user-vault>/                # User-selected path; Git syncs Markdown
+  SOUL.md
+  tasks.md
+  memory/
+    short.md
+    long.md
+    active/<YYYY-MM>/
+    archive/<YYYY-MM>/
 ```
 
 ## Later
