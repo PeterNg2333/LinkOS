@@ -7,9 +7,9 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 ## Architecture
 
 - **Monorepo:** `pnpm` for the desktop app, local TypeScript gateway, and shared contracts where needed.
-- **Desktop:** Electron runs one long-lived Engine; Next.js static export provides the UI.
+- **Desktop:** Electron runs one long-lived Engine with separate main and preload code; Next.js static export provides a feature-organized UI under `apps/desktop/src`.
 - **Local inputs:** Electron captures screen images, system status, and microphone audio. OCR runs locally. The microphone can be turned off.
-- **Gateway:** A local TypeScript API handles model calls, configured API clients, memory search, and scoped Git sync. It does not own agent scheduling or device capture.
+- **Gateway:** Local NestJS modules and controllers use Fastify for HTTP. They handle model calls, configured API clients, memory search, and scoped Git sync. The gateway does not own agent scheduling or device capture.
 - **Models:** Jev classifies compact text or structured state. Gemini is the initial generative model family for image and audio understanding, memory work, research, and code suggestions. The gateway uses a small model adapter so another provider, such as OpenAI, can be selected later.
 - **Storage:** Each device keeps its own Git working tree; all Markdown memory, notes, tasks, and `SOUL.md` sync through a Git remote on a remote filesystem. The gateway searches a small device-local set of Markdown pages; no central application database is required. Raw captures and runtime state remain separate on each device.
 
@@ -38,8 +38,8 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 
 ```text
 linkos/
-  apps/desktop/             # Electron Engine, capture, OCR, Next.js UI
-  apps/gateway/             # Local TypeScript API, model clients, Git sync
+  apps/desktop/             # Electron main/preload and Next.js feature UI
+  apps/gateway/             # Local NestJS/Fastify modules, model clients, Git sync
   apps/contracts/           # Shared schemas, only when both apps need them
   archive/legacy-vue-vite/  # Historical prototype
   AGENTS.md                 # Coding rules and architecture boundaries

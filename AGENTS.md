@@ -9,8 +9,8 @@
 ## Architecture boundaries
 
 - Keep one stateful LinkOS Engine in the Electron desktop app. It owns event triggers, current status, background jobs, agent runs, approved local tools, and the Markdown vault.
-- Keep screen capture, system status, microphone capture, and OCR local to Electron. Next.js provides the desktop UI; it does not own a second Engine.
-- Use a local TypeScript gateway for model calls, configured API clients, device-local memory search, and scoped Git sync. It does not capture devices, own agent state, or schedule agent work.
+- Keep screen capture, system status, microphone capture, and OCR local to Electron. Separate Electron main/preload from the Next.js renderer. Organize renderer UI by feature; put only genuinely shared UI code in `src/core`. Next.js does not own a second Engine.
+- Use local NestJS feature modules and controllers on Fastify for model calls, configured API clients, device-local memory search, and scoped Git sync. Keep routes in controllers and use Nest's built-in DI. The gateway does not capture devices, own agent state, or schedule agent work.
 - Send compact text or structured state to Jev for quick decisions. Use Gemini as the only initial generative provider for image and audio understanding, memory work, research, and code suggestions. Keep a small model adapter inside the gateway so an OpenAI provider can be added later; do not add unused provider implementations or a registry now.
 - Keep Markdown as canonical memory, notes, and individual task files. Attach `SOUL.md`, short memory, today's note, and long memory to agent prompts. Search up to 30 daily notes plus recent weekly and monthly summaries; start with a six-month summary window. Use 2,000 characters per daily note for sizing. Read tasks and notes by path or search them when needed; grep older archives on demand.
 - Sync all Markdown memory, notes, tasks, and `SOUL.md` between separate local Git working trees through a remote filesystem. Keep raw captures, runtime state, and any rebuildable page/chunk list local to each device; use no central application database. Keep stable prompt content before changing context for possible provider caching; meter actual model, cache, and tool usage against the monthly cost target.
@@ -18,7 +18,7 @@
 - Keep vault writes in the Engine and serialize Git sync in the gateway. Stage only vault-owned paths, never user-approved read-only folders. Stop and report sync conflicts rather than force-pushing or silently overwriting Markdown.
 - The future VS Code extension is a thin adapter to the same Engine. It may provide diffs, diagnostics, cursor context, and codebase references; do not build another agent inside it. Do not implement the extension until requested.
 - The runtime assistant may read only user-approved folders and write only its own vault. It may call approved memory, task, research, and API-read tools, but may not execute arbitrary local commands or edit project code. Future code execution needs an explicit MCP or sandbox boundary.
-- Keep event, tool, and gateway contracts explicit. Share schemas only across process boundaries that need them.
+- Keep event, tool, and gateway contracts explicit. Share only Zod schemas and inferred types across process boundaries that need them. Use Nest's schema validation at controller boundaries; avoid a second route or DTO definition.
 - Keep active workspaces under `apps/`: `desktop`, `gateway`, and `contracts` only when schemas are shared. Do not create `services/` or `packages/` layers for this design.
 
 ## Coding rules
