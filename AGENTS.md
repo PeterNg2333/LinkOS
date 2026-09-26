@@ -8,9 +8,9 @@
 
 ## Architecture boundaries
 
-- Keep one stateful LinkOS Engine in the Electron desktop app. It owns event triggers, current status, background jobs, agent runs, approved tools, the Markdown vault, and Git sync.
+- Keep one stateful LinkOS Engine in the Electron desktop app. It owns event triggers, current status, background jobs, agent runs, approved local tools, and the Markdown vault.
 - Keep screen capture, system status, microphone capture, and OCR local to Electron. Next.js provides the desktop UI; it does not own a second Engine.
-- Keep the AI gateway stateless. It receives self-contained requests, calls Jev or Gemini, and returns results. Its server runtime is undecided. It does not capture devices, read local folders, own memory, execute local tools, or schedule agent work.
+- The gateway handles model calls, configured API clients, and scoped Git updates. Its runtime and Git boundary are undecided. It does not capture devices, own agent state, or schedule agent work.
 - Send compact text or structured state to Jev for quick decisions. Use Gemini for image and audio understanding, memory work, research, and code suggestions.
 - Keep Markdown as canonical memory and tasks. Attach `SOUL.md`, short memory, today's note, and long memory to agent prompts; use summaries and indexes for weekly and monthly memory by default. Keep at most one month of detailed memory active and archive older detail.
 - Use IndexedDB only for rebuildable active-memory search and runtime state. Keep stable prompt content before changing context for possible provider caching; meter actual model, cache, and tool usage against the monthly cost target.

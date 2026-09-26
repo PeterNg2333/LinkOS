@@ -9,7 +9,7 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 - **Monorepo:** `pnpm` for the desktop app and shared TypeScript code. The AI gateway's runtime is still under discussion.
 - **Desktop:** Electron runs one long-lived Engine; Next.js static export provides the UI.
 - **Local inputs:** Electron captures screen images, system status, and microphone audio. OCR runs locally. The microphone can be turned off.
-- **AI gateway:** A stateless API receives complete requests, calls Jev or Gemini, and returns results. It does not own local state or tools.
+- **Gateway:** An API handles model calls, configured API clients, and scoped Git updates. Its runtime and Git boundary are under discussion.
 - **Models:** Jev classifies compact text or structured state. Gemini handles image and audio understanding, memory work, research, and code suggestions.
 - **Storage:** Markdown is canonical and Git syncs it. IndexedDB holds a rebuildable active-memory search index and runtime state. Raw media stays local unless an event calls for model analysis.
 
