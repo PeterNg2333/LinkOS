@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node node_modules/.pnpm/electron@30.5.1/node_modules/electron/install.js)"
+      "Bash(node node_modules/.pnpm/electron@30.5.1/node_modules/electron/install.js)",
+      "Bash(node -e \"const p=require\\('./node_modules/@orpc/server/package.json'\\); console.log\\(JSON.stringify\\(p.exports, null, 2\\)\\)\")",
+      "Bash(node -e \"const p=require\\('./node_modules/@orpc/server/package.json'\\); console.log\\('VERSION:', p.version\\)\")",
+      "Bash(node -e \"const p=require\\('./node_modules/@orpc/client/package.json'\\); console.log\\(JSON.stringify\\(p.exports['.'], null, 2\\)\\)\")",
+      "Bash(mkdir docs *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\a1831\\Documents\\GitHub\\LinkOS"
     ]
   }
 }

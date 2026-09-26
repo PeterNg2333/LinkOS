@@ -1,68 +1,76 @@
-import { app, BrowserWindow } from 'electron'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
+import { app, BrowserWindow, MessageChannelMain } from "electron";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { RPCHandler } from "@orpc/server/message-port";
 
-const require = createRequire(import.meta.url)
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+import appRouter from "./api/index";
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.mjs
-// │
-process.env.APP_ROOT = path.join(__dirname, '..')
+// ==========================================
+// 1. Initialization & Paths
+// ==========================================
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+// Set root directory and other paths
+process.env.APP_ROOT = path.join(__dirname, "..");
+const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
+// Static resources path
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 
-let win: BrowserWindow | null
+// ==========================================
+// 2. Window Management
+// ==========================================
+const rpcHandler = new RPCHandler(appRouter);
+let mainWindow: BrowserWindow | null;
 
-function createWindow() {
-  win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+const createWindow = () => {
+  mainWindow = new BrowserWindow({
+    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, "preload.mjs"),
     },
-  })
+  });
 
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
-  })
+  // After Loading successfully, test active push message to Renderer-process.
+  mainWindow.webContents.on("did-finish-load", () => {
+    if (!mainWindow) return;
+    const { port1, port2 } = new MessageChannelMain();
+    rpcHandler.upgrade(port1);
+    port1.start();
+    mainWindow.webContents.postMessage("orpc-port", null, [port2]);
+  });
 
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
-  } else {
-    // win.loadFile('dist/index.html')
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+  // Load the appropriate URL or file based on the environment
+  VITE_DEV_SERVER_URL // Dev or build? Load URL or file accordingly
+    ? mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    : mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+};
+
+// ==========================================
+// 3. App Lifecycle
+// ==========================================
+app.whenReady().then(createWindow);
+app.on("window-all-closed", () => {
+  // Quit when all windows are closed, except on macOS. There, it's common
+  // for applications and their menu bar to stay active until the user quits
+  // explicitly with Cmd + Q.
+  if (process.platform !== "darwin") {
+    app.quit();
+    mainWindow = null;
   }
-}
-
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
-})
-
-app.on('activate', () => {
+});
+app.on("activate", () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createWindow();
   }
-})
+});
 
-app.whenReady().then(createWindow)
+export { VITE_DEV_SERVER_URL, MAIN_DIST, RENDERER_DIST };
