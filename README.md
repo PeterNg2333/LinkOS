@@ -4,6 +4,8 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 
 > Status: architecture design. The old Vue/Vite/Electron prototype is in [`archive/legacy-vue-vite/`](archive/legacy-vue-vite/). The new app is not implemented yet.
 
+For daily behavior and nontechnical examples, see [System design](<system design.md>).
+
 ## Architecture
 
 - **Monorepo:** `pnpm` for the desktop app, local TypeScript gateway, and shared contracts where needed.
