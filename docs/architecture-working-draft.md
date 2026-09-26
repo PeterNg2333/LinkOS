@@ -13,13 +13,13 @@
 
 - Scaffold the `pnpm` workspace, desktop app, and local gateway. Add `apps/contracts` when the first schema is shared.
 - Make one manual request travel from Next.js through preload, the Engine, and the gateway to Gemini; show the result and usage in the UI.
-- Check the loopback credential, gateway-only API keys, and Electron IPC boundary on that path.
+- Check the loopback credential, gateway-only model credentials, explicit Vertex AI endpoint, and Electron IPC boundary on that path.
 - Then add capture, event rules, memory search, and Git sync as separate working slices.
 - Settle the remaining behavior choices in [system design](<../system design.md>) as their slices begin.
 
 ## Candidate flow
 
-1. Electron starts the local gateway and keeps API keys out of the Next.js UI.
+1. Electron starts the local gateway and keeps model credentials out of the Next.js UI.
 2. A timer captures a screenshot and system status. A small image comparison and trigger rules decide whether to run local OCR or send compact state to Jev.
 3. Jev answers batched intent, image-analysis, and agent-run questions. The Engine applies confidence, cooldown, and budget rules before a Gemini call.
 4. The Engine assembles `SOUL.md`, short/today/long memory, and selected daily or summary chunks. Gemini may request approved tools; the Engine owns the tool loop.
@@ -30,12 +30,12 @@
 ## Candidate packages by folder
 
 - Root: `pnpm` workspace and TypeScript. Keep aliases inside each app; use workspace imports between apps.
-- `apps/gateway`: `@nestjs/common`, `@nestjs/core`, and `@nestjs/platform-fastify` provide modules, controllers, routes, and DI on a loopback Fastify server. Reuse Zod schemas from `apps/contracts` with Nest's Standard Schema validation. `@typesafe-ai/sdk` calls Jev and `@google/genai` calls Gemini. `simple-git` runs scoped, serialized vault sync using the installed Git binary. `@orama/orama` builds a device-local Markdown search index; trial `@orama/tokenizers` for Chinese notes.
+- `apps/gateway`: `@nestjs/common`, `@nestjs/core`, and `@nestjs/platform-fastify` provide modules, controllers, routes, and DI on a loopback Fastify server. Reuse Zod schemas from `apps/contracts` with Nest's Standard Schema validation. `@typesafe-ai/sdk` calls Jev and `@google/genai` calls Gemini through Vertex AI. `simple-git` runs scoped, serialized vault sync using the installed Git binary. `@orama/orama` builds a device-local Markdown search index; trial `@orama/tokenizers` for Chinese notes.
 - `apps/gateway` later: `@nestjs/swagger` generates OpenAPI from controller routes and Zod schemas if a client needs it. Add an OpenAI client only when access is available; OpenRouter remains unverified. Nest provides DI, so do not add `tsyringe`. Add `neverthrow` only if explicit Result values simplify real error flows; confirm this is the intended package name.
 - `apps/desktop`: `electron` runs main, preload, the Engine, capture, and vault writes. `next`, `react`, and `react-dom` build the static UI; `zustand` holds visible UI state, not Engine state. `tailwindcss` plus selected `shadcn/ui` components is the proposed UI pair; MUI is an alternative, not a second component system. `tesseract.js` is a local OCR trial with bundled language data. Electron main calls the gateway through native `fetch` and validates boundary data with Zod; the Next.js renderer uses preload IPC.
 - `apps/contracts`: `zod` only. Export cross-process schemas and inferred types; no Nest decorators, clients, routes, state, or business logic.
 - Platform APIs: Electron `desktopCapturer` and `nativeImage`, renderer `MediaRecorder`, Node timers and file APIs. Add an MCP client only for an approved MCP integration.
-- Jev and Gemini both have official TypeScript SDKs. Pass `JEV_API_KEY` and `GOOGLE_AI_STUDIO_API_KEY` explicitly. Google project/location settings matter only if access later moves to Vertex AI.
+- Pass `JEV_API_KEY` explicitly. Initialize `@google/genai` with `vertexai: true` and the selected Vertex AI authentication method. Keep `VERTEX_AI_AUTH_MODE=unconfigured` until ADC or a Vertex Express API key is confirmed; reject unconfigured or missing credentials before any request. Never interpret the old `GOOGLE_AI_STUDIO_*` names as permission to call the Gemini Developer API.
 - LlamaIndex.TS has been deprecated by its maintainers. Keep search in one process, the local gateway; do not install a second index in Electron. Add vector embeddings only if real retrieval examples justify hybrid search.
 
 ## Gateway operations
@@ -119,7 +119,8 @@ apps/contracts/
 ## Sources for provisional choices
 
 - Jev JavaScript SDK: https://docs.typesafe.ai/sdk/javascript
-- Google GenAI JavaScript SDK: https://ai.google.dev/gemini-api/docs/libraries
+- Google GenAI Vertex AI initialization: https://googleapis.github.io/js-genai/release_docs/classes/client.GoogleGenAI.html
+- Vertex AI Express mode API key example: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/samples/googlegenaisdk-vertexai-express-mode
 - Nest modules, Fastify adapter, and native Zod/OpenAPI integration: https://docs.nestjs.com/modules, https://docs.nestjs.com/techniques/performance, and https://docs.nestjs.com/openapi/introduction
 - Next.js `src/app` convention: https://nextjs.org/docs/app/api-reference/file-conventions/src-folder
 - LlamaIndex.TS deprecation: https://github.com/run-llama/LlamaIndexTS
