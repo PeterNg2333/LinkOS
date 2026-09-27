@@ -6,13 +6,15 @@ A local-first personal AI assistant. It observes work context, keeps Markdown me
 
 For daily behavior and nontechnical examples, see [System design](<system design.md>).
 
+App-level file and feature plans: [Desktop](docs/desktop.md), [Gateway](docs/gateway.md), and [shared packages](docs/packages.md).
+
 ## Architecture
 
-- **Monorepo:** `pnpm` for the desktop app, local TypeScript gateway, and shared contracts where needed.
-- **Desktop:** Electron runs one long-lived Engine with separate main and preload code; Next.js static export provides a feature-organized UI under `apps/desktop/src`.
+- **Monorepo:** `pnpm` for the desktop app, local TypeScript gateway, and `apps/packages` for the shared gateway HTTP contract.
+- **Desktop:** Electron runs one long-lived Engine with separate main and preload code; an oRPC MessagePort router exposes named Engine operations to the Next.js static renderer under `apps/desktop/src`.
 - **Local inputs:** Electron captures screen images, system status, and microphone audio. OCR runs locally. The microphone can be turned off.
-- **Gateway:** Local NestJS modules and controllers use Fastify for HTTP. They handle model calls, configured API clients, memory search, and scoped Git sync. The gateway does not own agent scheduling or device capture.
-- **Models:** Jev classifies compact text or structured state. Gemini runs through Vertex AI for image and audio understanding, memory work, research, and code suggestions. The gateway uses a small model adapter so another provider, such as OpenAI, can be selected later. Vertex AI is the initial Google endpoint; do not silently fall back to the Gemini Developer API.
+- **Gateway:** Local NestJS modules and controllers use Fastify for HTTP and implement the shared oRPC contract. They handle model calls, configured API clients, memory search, and scoped Git sync. The gateway does not own agent scheduling or device capture.
+- **Models:** The gateway calls Jev over direct HTTP to classify compact text or structured state. Gemini runs through Vertex AI for image and audio understanding, memory work, research, and code suggestions. The gateway uses a small model adapter so another provider, such as OpenAI, can be selected later. Vertex AI is the initial Google endpoint; do not silently fall back to the Gemini Developer API.
 - **Storage:** Each device keeps its own Git working tree; all Markdown memory, notes, tasks, and `SOUL.md` sync through a Git remote on a remote filesystem. The gateway searches a small device-local set of Markdown pages; no central application database is required. Raw captures and runtime state remain separate on each device.
 
 ## Event flow
@@ -40,9 +42,15 @@ For daily behavior and nontechnical examples, see [System design](<system design
 
 ```text
 linkos/
+  package.json              # Workspace scripts
+  pnpm-workspace.yaml       # apps/* workspace membership
+  tsconfig.base.json        # Shared compiler defaults
+  .env.example              # Existing credential/config template
+  .gitignore                # Existing local-secret/build exclusions
   apps/desktop/             # Electron main/preload and Next.js feature UI
   apps/gateway/             # Local NestJS/Fastify modules, model clients, Git sync
-  apps/contracts/           # Shared schemas, only when both apps need them
+  apps/packages/            # Shared gateway oRPC contract and Zod schemas
+  docs/                     # One detailed plan per app
   archive/legacy-vue-vite/  # Historical prototype
   AGENTS.md                 # Coding rules and architecture boundaries
   README.md
@@ -61,8 +69,9 @@ linkos/
 <device-data>/              # Raw captures and runtime state; never Git-synced
 ```
 
-## Later
+Build in working slices: workspace and shared request schema; authenticated manual Gemini request through desktop and gateway; Jev decision routing; local observation and vault tools; memory search and scoped sync; then bounded background work. Add files from each app plan only as the corresponding slice begins.
 
+## Later
 - No VS Code extension in MVP. A future extension will be a thin input/output adapter to the same Engine.
 - It can provide unsaved diffs, cursor position, diagnostics, and codebase references for suggestions and code smell detection.
 - Any future code execution must use an explicitly designed MCP or sandbox permission boundary.

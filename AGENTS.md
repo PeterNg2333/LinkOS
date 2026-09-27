@@ -10,7 +10,7 @@
 
 - Keep one stateful LinkOS Engine in the Electron desktop app. It owns event triggers, current status, background jobs, agent runs, approved local tools, and the Markdown vault.
 - Keep screen capture, system status, microphone capture, and OCR local to Electron. Separate Electron main/preload from the Next.js renderer. Organize renderer UI by feature; put only genuinely shared UI code in `src/core`. Next.js does not own a second Engine.
-- Use local NestJS feature modules and controllers on Fastify for model calls, configured API clients, device-local memory search, and scoped Git sync. Keep routes in controllers and use Nest's built-in DI. The gateway does not capture devices, own agent state, or schedule agent work.
+- Use local NestJS feature modules and controllers on Fastify for model calls, configured API clients, device-local memory search, and scoped Git sync. Declare gateway HTTP routes once in the shared oRPC contract and implement them in Nest controllers with built-in DI. The gateway does not capture devices, own agent state, or schedule agent work.
 - Send compact text or structured state to Jev for quick decisions. Use Gemini through Vertex AI as the only initial generative provider for image and audio understanding, memory work, research, and code suggestions. Initialize `@google/genai` with Vertex AI explicitly; reject missing or ambiguous Vertex configuration rather than falling back to the Gemini Developer API. Keep a small model adapter inside the gateway so an OpenAI provider can be added later; do not add unused provider implementations or a registry now.
 - Keep Markdown as canonical memory, notes, and individual task files. Attach `SOUL.md`, short memory, today's note, and long memory to agent prompts. Search up to 30 daily notes plus recent weekly and monthly summaries; start with a six-month summary window. Use 2,000 characters per daily note for sizing. Read tasks and notes by path or search them when needed; grep older archives on demand.
 - Sync all Markdown memory, notes, tasks, and `SOUL.md` between separate local Git working trees through a remote filesystem. Keep raw captures, runtime state, and any rebuildable page/chunk list local to each device; use no central application database. Keep stable prompt content before changing context for possible provider caching; meter actual model, cache, and tool usage against the monthly cost target.
@@ -18,13 +18,15 @@
 - Keep vault writes in the Engine and serialize Git sync in the gateway. Stage only vault-owned paths, never user-approved read-only folders. Stop and report sync conflicts rather than force-pushing or silently overwriting Markdown.
 - The future VS Code extension is a thin adapter to the same Engine. It may provide diffs, diagnostics, cursor context, and codebase references; do not build another agent inside it. Do not implement the extension until requested.
 - The runtime assistant may read only user-approved folders and write only its own vault. It may call approved memory, task, research, and API-read tools, but may not execute arbitrary local commands or edit project code. Future code execution needs an explicit MCP or sandbox boundary.
-- Keep event, tool, and gateway contracts explicit. Share only Zod schemas and inferred types across process boundaries that need them. Use Nest's schema validation at controller boundaries; avoid a second route or DTO definition.
-- Keep active workspaces under `apps/`: `desktop`, `gateway`, and `contracts` only when schemas are shared. Do not create `services/` or `packages/` layers for this design.
+- Keep event, tool, and gateway contracts explicit. Declare desktop IPC procedures once in its main-process oRPC router; the renderer imports only its type. `apps/packages/src/gateway.ts` holds the gateway oRPC contract and Zod input/output schemas; Nest controllers implement it without a second route or DTO definition.
+- Keep active workspaces under `apps/`: `desktop`, `gateway`, and `packages` only when the gateway contract is shared. Do not create root-level `services/` or `packages/` layers.
 
 ## Coding rules
 
 - Prefer locality of behavior and KISS. Keep related logic together; do not scatter a small flow across micro-files or helpers.
-- Do not add an interface, abstract class, factory, or design pattern for a single implementation. Add an abstraction when real polymorphism or repeated business rules require it.
+- Within a feature, use functions for transformations and a small concrete class when state or lifecycle makes it clearer. Prefer composition over implementation inheritance.
+- Expose cohesive objects or classes with named operations at module boundaries when they clarify ownership. Across Electron IPC and HTTP, exchange validated data; do not pass class instances across processes.
+- Use Nest's concrete controller and service classes for DI. An abstract class may serve as a runtime DI token for a stable boundary when it adds clarity, without requiring the implementation to inherit behavior. Do not add interfaces, abstract classes, or factories solely for a single implementation.
 - Prefer a direct procedural or functional flow over enterprise boilerplate. Extract functions for meaningful responsibilities, not merely to shorten a file.
 - Use precise, concise names that explain intent. Avoid vague names such as `data`, `temp`, `res`, or `item` when a specific name is possible.
 - Do not comment on what code visibly does. Comment only to explain a non-obvious business reason, constraint, or workaround.
