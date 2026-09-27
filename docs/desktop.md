@@ -2,95 +2,211 @@
 
 > Planned files, not an implemented app. [README](../README.md) owns the settled architecture. Create each group when its development slice begins.
 
-## Responsibility and boundaries
+## Boundaries
 
-Electron main hosts the **only** stateful LinkOS Engine. It owns event triggers, current status, bounded agent runs, background jobs, local capture and OCR, approved local tools, and all Markdown vault writes. It starts and talks to the loopback gateway. An oRPC router exposes named Engine operations over a MessagePort to the Next.js renderer; the renderer never receives model credentials, filesystem access, Node APIs, or an independent Engine.
+Electron main owns the single stateful Engine, local capture/OCR, approved tools, and Markdown writes. The loopback gateway handles models, search, and Git sync. The Next.js renderer displays state and sends intent through one oRPC MessagePort; it has no credentials, filesystem access, Node APIs, or second Engine.
 
-The renderer displays Engine state and sends user intent. Feature code stays in its feature folder; `src/core` is only for UI used by multiple features. Microphone capture stays local to Electron with an explicit on/off control. The Engine may read user-approved folders and write only its vault; it cannot execute arbitrary commands or modify project code.
-
-The IPC router is the UI-facing object of named operations; handlers delegate to the Engine, while feature internals use functions or small concrete classes as appropriate. `assistant.submit` and the gateway's `generation` are separate operations, each declared once at its own process boundary.
-
-## Conclusions from reference apps
-
-- Use Electron's single-instance lifecycle and let a reloaded renderer resubscribe to the existing Engine state. `ai-kiosk/main/background.ts` already handles single-instance startup and renderer crashes.
-- Put cancellation, operation IDs, stale-result checks, queues, and timers in the Engine. `ai-kiosk` has working conversation cancellation in renderer state, but LinkOS needs those operations to survive renderer reloads.
-- Keep the oRPC router limited to approved Engine operations and credentials out of renderer URLs. Set `contextIsolation: true`, `nodeIntegration: false`, and normal web security; a typed RPC client is not an authorization boundary.
-- The archived Vue/Vite MessagePort wiring is a useful starting point. Follow the current oRPC Electron adapter for transport and keep the planned Next.js renderer and Engine-to-gateway flow.
+Feature modules own their behavior and declare renderer procedures once in local `ipc.ts` files. `main/ipc.ts` composes them and validates the connecting renderer. Keep `contextIsolation: true`, `nodeIntegration: false`, and web security enabled. A renderer reload reconnects to the existing Engine; runs and timers continue in main.
 
 ## Proposed tree
 
+Indented names below a file are planned members, not extra files. Create files with their development slice.
+
+### Desktop root
+
 ```text
 apps/desktop/
-  package.json                    # Desktop scripts and dependencies
-  tsconfig.json                   # Next/renderer compiler settings
-  next.config.ts                  # Static export for Electron
-  electron-builder.yml           # Packaging once the dev flow works
-  electron/
-    tsconfig.json                 # Main/preload build boundary
-    main/
-      main.ts                     # Single instance, window and gateway lifecycle
-      ipc-transport.ts            # Renderer-initiated MessagePort handshake
-      gateway-client.ts           # Typed OpenAPILink with session credential
-      ipc/
-        index.ts                  # One router and exported AppRouter type
-        assistant.ts              # Manual prompt procedure -> Engine
-        activity.ts               # Status and pause/resume procedures
-        settings.ts               # Approved settings procedures
-      engine/
-        engine.ts                 # One state owner; manual request entry point
-        status.ts                 # Activity/repo/task and running-job snapshot
-        triggers.ts               # Event rules, cooldowns, coalescing
-        jobs.ts                   # Timers, resume behavior, cancellation
-        agent-run.ts              # Prompt assembly and bounded tool loop
-        usage.ts                  # Actual model/cache/tool usage and cost meter
-      capture/
-        screen.ts                 # Local screen capture and retention
-        system.ts                 # Idle/lock/activity signals
-        ocr.ts                    # Local OCR with bundled language data
-        audio.ts                  # Opt-in recording/transcription handoff
-      vault/
-        vault.ts                  # Markdown read/write and atomic updates
-        permissions.ts            # Vault and approved read-folder checks
-        context.ts                # SOUL/short/today/long and selected notes
-        tools.ts                  # Approved memory/task tool implementations
-    preload/
-      index.ts                    # Relay only the oRPC MessagePort
-    audio/
-      recorder.ts                 # Isolated capture renderer, if required
-  src/
-    app/
-      layout.tsx                  # App shell composition
-      page.tsx                    # Main screen composition
-    features/
-      assistant/                  # Prompt, responses, suggestions, usage
-      activity/                   # Observation and pause/resume controls
-      memory/                     # Search results and page navigation
-      tasks/                      # Individual task-file views
-      settings/                   # Mic, folders, model/budget settings
-    core/
-      desktop-client.ts           # Typed oRPC client shared by UI features
-  tests/
-    manual-request.test.ts        # UI intent -> Engine -> gateway boundary
-    vault-permissions.test.ts     # Allowed reads/writes and SOUL protection
-    trigger-rules.test.ts         # Cooldowns, coalescing, pause/resume
+|-- package.json
+|-- tsconfig.json
+|-- next.config.ts              # Static Next.js export for Electron
+|-- electron-builder.yml        # Add after the development path works
+|-- electron/                   # Main, preload, local capture; see below
+|-- src/                        # Next.js renderer; see below
+|-- public/brand/linkos.png     # Planned copy of supplied icon
+`-- tests/                      # Boundary and behavior tests
+
+<memory-files>/                 # One Git working tree per device
+|-- SOUL.md
+|-- notes/
+|-- tasks/
+`-- memory/
+
+<device-data>/                  # Raw captures and runtime state; no Git sync
 ```
+
+### Electron
+
+```text
+electron/
+|-- tsconfig.json
+|-- main/
+|   |-- main.ts
+|   |   |-- bootstrap(): single instance, start gateway, Engine, IPC, window
+|   |   |-- startGateway(): launch local server and wait for readiness
+|   |   `-- shutdown(): stop Engine, ports, and local gateway
+|   |-- ipc.ts                   # Compose routers; validate sender; manage ports
+|   |-- gateway-client.ts
+|   |   `-- createGatewayClient(): typed HTTP calls with session credential
+|   |-- engine.ts
+|   |   |-- LinkEngine: own one instance of each stateful module
+|   |   |-- start(): restore state, connect events, start capture and scheduler
+|   |   |-- onObservation(): apply trigger rules, start runs, update status
+|   |   `-- stop(): detach events, stop jobs, cancel runs
+|   |-- modules/
+|   |   |-- assistant/
+|   |   |   |-- assistant.ts     # AssistantService: conversations and prompt intent
+|   |   |   `-- ipc.ts           # Threads, submit/cancel, progress subscription
+|   |   |-- status/
+|   |   |   |-- status.ts        # StatusStore: snapshots/subscriptions; reduceStatus()
+|   |   |   `-- ipc.ts           # status snapshot/watch procedures
+|   |   |-- runs/
+|   |   |   |-- runner.ts        # RunManager + runAgent(): limits, IDs, cancellation
+|   |   |   |-- triggers.ts      # Pure trigger selection, cooldown, coalescing
+|   |   |   `-- usage.ts         # Actual usage and monthly-cost calculations
+|   |   |-- capture/
+|   |   |   |-- capture.ts       # CaptureManager lifecycle, pause, history, preview
+|   |   |   |-- ipc.ts           # Capture, pause/resume, list/preview procedures
+|   |   |   |-- screen.ts        # Screenshot and expiry functions
+|   |   |   |-- system.ts        # Idle/lock/activity signals
+|   |   |   |-- ocr.ts           # Local screen OCR
+|   |   |   `-- audio.ts         # Mic consent, recording lifecycle, handoff
+|   |   |-- schedules/
+|   |   |   |-- schedules.ts     # Scheduler: definitions/timers; computeNextDue()
+|   |   |   `-- ipc.ts           # Schedule CRUD, run-now, history procedures
+|   |   |-- settings/
+|   |   |   |-- settings.ts      # Local settings read/update operations
+|   |   |   `-- ipc.ts           # Settings procedures
+|   |   `-- memory-files/
+|   |       |-- store.ts         # MarkdownStore: root, reads, atomic writes
+|   |       |-- memory.ts        # Search/read operations via gateway and store
+|   |       |-- tasks.ts         # Task list/read/update operations
+|   |       |-- permissions.ts   # Resolve approved read and writable paths
+|   |       `-- ipc.ts           # Memory and task procedures
+|   |-- context/
+|   |   |-- default-prompt.ts    # Stable built-in instructions before variable context
+|   |   `-- build-context.ts    # SOUL, short memory, today's note, long memory
+|   `-- tools/
+|       |-- api.ts
+|       |   |-- ToolApi.listForRun(): approved tool descriptions
+|       |   |-- ToolApi.executeLocal(): validate and invoke a registered handler
+|       |   `-- ToolApi.loadSkill(): read checked-in workflow instructions
+|       `-- skills/
+|           `-- daily-review.md  # Built-in instructions; no extra capability
+|-- preload/index.ts             # Relay only the oRPC MessagePort
+`-- audio/recorder.ts            # Browser microphone capture in isolated renderer
+```
+
+### Electron data flow
+
+```text
+User action
+Renderer → preload → main/ipc.ts → module ipc.ts → module object
+                                                  ↓
+                                         RunManager / StatusStore
+
+Observation
+Local capture/OCR → Engine → trigger rules → gateway-client.ts → Gateway → Jev
+Jev decision → Engine → RunManager → gateway-client.ts → Gateway → Gemini
+
+Gemini tool request
+Gateway → Engine → ToolApi → approved local module function
+                            ↓
+                   tool result → Gateway → Gemini
+
+Data and UI
+MarkdownStore → Gateway scoped Git sync
+StatusStore / AssistantService → status.watch / assistant.watch → Renderer
+```
+
+`main.ts` starts and stops the local gateway; `gateway-client.ts` is its authenticated HTTP client. The Engine owns module instances and cross-module events. Jev receives compact decisions; Gemini receives selected context and media. `ToolApi` validates each registered call and delegates to modules. Skills supply instructions, not permissions. Renderer reload releases its port; Engine runs continue.
+
+### Renderer
+
+```text
+src/
+|-- app/
+|   |-- layout.tsx               # Mantine providers, shell, navigation
+|   |-- globals.css              # LinkOS surfaces and layout details
+|   |-- page.tsx                  # Dashboard
+|   |-- capture/page.tsx
+|   |-- schedules/page.tsx
+|   |-- chat/page.tsx
+|   |-- memory/page.tsx
+|   |-- tasks/page.tsx
+|   `-- settings/page.tsx
+|-- core/
+|   |-- desktop-client.ts        # Typed oRPC MessagePort client
+|   |-- theme.ts                 # Blue, green, gold Mantine theme
+|   |-- notify.ts                # Consistent success/error/progress toast
+|   |-- stores/uiStore.ts        # Shared view state only
+|   |-- hooks/useEngineStatus.ts # Snapshot subscription and reconnect
+|   `-- components/
+|       |-- Sidebar.tsx
+|       |-- ModalFrame.tsx        # Dialog title, actions, size, close behavior
+|       |-- FormFrame.tsx         # Field, error, and submit layout
+|       |-- FormFlow.tsx          # steps: data, component, check, next
+|       |-- CollectionView.tsx    # Array + stable key/row and loading/empty/error
+|       `-- ViewerFrame.tsx      # Selected content/actions and empty/error frame
+`-- features/
+    |-- dashboard/
+    |   `-- Overview.tsx         # Status, next run, recent activity, cost
+    |-- capture/
+    |   |-- useCapture.ts        # Capture actions, history, selected preview
+    |   |-- Controls.tsx         # Pause/resume and capture-now
+    |   |-- Row.tsx              # One history entry
+    |   `-- Preview.tsx          # Selected image and metadata in ViewerFrame
+    |-- schedules/
+    |   |-- useSchedules.ts      # List, save, toggle, run-now, history
+    |   |-- Card.tsx             # One schedule and expandable runs
+    |   |-- Form.tsx             # Schedule-specific fields
+    |   `-- RunRow.tsx           # One run outcome
+    |-- chat/
+    |   |-- useChat.ts           # Threads, submit/cancel, progress subscription
+    |   |-- Conversation.tsx     # Thread and message list
+    |   |-- MessageRow.tsx       # One user/assistant message
+    |   `-- Composer.tsx         # Prompt input, submit, cancel
+    |-- memory/
+    |   |-- useMemory.ts         # Search and selected page
+    |   |-- Browser.tsx          # Results and ViewerFrame
+    |   `-- ResultRow.tsx        # One search hit
+    |-- tasks/
+    |   |-- useTasks.ts          # List, read, update
+    |   |-- Workspace.tsx        # List and selected task editor
+    |   `-- Row.tsx              # One task
+    `-- settings/
+        |-- useSettings.ts       # Local settings reads/updates
+        |-- Panel.tsx            # Settings sections
+        `-- SetupForm.tsx        # FormFlow steps for first setup
+```
+
+## UI scope and state
+
+Use the Screenpipe reference for a compact sidebar and expandable schedule history. Follow the LinkOS icon with a deep-blue frame, tinted content surfaces, green healthy states, and gold emphasis; status also needs text/icons. The dashboard shows observation, next run, recent outcomes, and actual monthly cost.
+
+Use Mantine for basic controls. Keep Zustand in `core/stores` for renderer-only view state; Engine owns capture, schedules, conversations, memory, and tasks. Share hooks/components through `core` only when used by multiple features. Route pages compose feature components directly.
+
+`ModalFrame` standardizes dialog layout; `notify.ts` handles toasts. `FormFrame` handles simple forms. `FormFlow` takes an ordered step array (`data`, `component`, `check`, optional `next`) and submits once; IPC validates again. `CollectionView` handles list states and rendering, while feature rows/cards own their content. `ViewerFrame` provides a common detail frame, while each feature supplies its viewer content.
+
+## Markdown root
+
+`<memory-files>` is the device-local Git tree for Markdown and `SOUL.md`; `modules/memory-files/` owns writes. Raw media remains under `<device-data>`. `tools/` exposes approved local functions and built-in skill instructions to the Engine.
 
 ## Development slices
 
-1. **Manual assistant path.** Scaffold Electron and Next.js static export; start the gateway with a generated session credential; define `assistant.submit` once in the main-process oRPC router; call it through the typed MessagePort client, Engine, authenticated gateway, and Gemini. Show text, errors, and usage. Verify the renderer imports only the router type, contains no credential or direct gateway call, and reconnects after reload. Package the app only after this dev path works.
-2. **Status and Jev routing.** Add Engine events, current status, trigger rules, cooldown/coalescing, and a gateway decision call. Jev receives compact text or structured state. Pause, idle, and resume suppress or resume work without replaying missed timers. Verify repeated observations do not create duplicate runs.
-3. **Local observation.** Add screen/system capture, local OCR, and opt-in microphone capture in that order. Keep raw media outside the Git vault; delete screenshots after three days and raw audio one day after transcription. Verify lock/pause stops relevant inputs.
-4. **Memory and approved tools.** Create/read Markdown notes and a task through Engine-owned vault operations. Assemble `SOUL.md`, `memory/short.md`, today's note, and `memory/long.md` before variable context. Allow agent edits to memory, notes, and `tasks/*.md`, but reject writes to `SOUL.md` and outside-vault paths. Verify failed writes leave the original page intact.
-5. **Bounded autonomous work.** Add run-time, model-call, and tool-call limits; scheduled jobs; cost meter; suggestions; and visible job status. Keep the monthly target near HK$80 and settle budget behavior before proactive paid work. Verify cancellation and gateway failure leave status consistent.
-6. **Sync presentation.** Ask the gateway to sync after vault changes, show pending/conflict state, and refresh pages after incoming changes. The desktop never runs Git. Verify a conflict stops automatic sync until reviewed.
+1. **Manual assistant:** Electron, static Next.js, authenticated gateway, typed IPC, Gemini text/error/usage. Verify renderer reload keeps the run.
+2. **Status and Jev:** Engine snapshots, trigger cooldowns, compact Jev decisions. Verify pause/resume and duplicate suppression.
+3. **Observation:** Screen, system, OCR, then opt-in microphone. Verify lock/pause and raw-media retention outside Git.
+4. **Memory and tools:** Markdown reads/writes, prompt context, approved tools. Reject `SOUL.md` and outside-root agent writes.
+5. **Background work:** Bounded runs, schedules, cost meter, cancellation, visible outcomes. Target about HK$80/month.
+6. **Sync:** Gateway-only Git sync; show pending/conflicts and refresh changed pages. Never auto-resolve conflicts.
 
 ## IPC and data rules
 
-- The main-process router declares each UI operation once with input/output validation; the renderer imports `AppRouter` as a type and calls named procedures. Preload forwards only the MessagePort, never a generic `ipcRenderer` or filesystem method.
-- The port handshake accepts only the app's renderer. Main validates oRPC input and gateway responses. Shared desktop/gateway HTTP contracts live in `apps/packages/src/gateway.ts`; Electron-only IPC procedures remain in this app.
-- Raw screenshots, audio, and runtime state live under device-local data, never the synced vault. Persist useful Markdown outcomes.
-- `SOUL.md` is user-editable only, including through UI and agent tools.
+- Module `ipc.ts` files validate inputs/outputs once; `main/ipc.ts` composes them. The renderer imports only `AppRouter` as a type. Preload relays only the MessagePort; main checks the sender and gateway responses.
+- `status.watch` and `assistant.watch` begin with full snapshots. IPC exposes capture IDs and validated previews, never arbitrary file paths.
+- Prompt order: built-in instructions, selected skill, then changing context. `ToolApi` checks schema and permission again at execution; skills grant no permission. `SOUL.md` is user-editable only.
+- Schedules and raw media are device-local. Git sync covers only Markdown; a conflict stops automatic sync.
 
 ## Open decision
 
-The current uncommitted `system design.md` says two days for screenshots and two days after transcription for raw audio, while `README.md` and `AGENTS.md` specify three and one. This plan follows the README/agent boundary until that product retention choice is reconciled.
+`system design.md` says two days for screenshots and two days after transcription for raw audio, while `README.md` and `AGENTS.md` specify three and one. This plan follows the README/agent boundary until that product retention choice is reconciled.
